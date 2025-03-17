@@ -1,0 +1,7 @@
+runpod~=1.7.0
+marker-pdf~=1.6.1
+Pillow>=10.1.0
+python-dotenv>=1.0.0
+filetype>=1.2.0
+ftfy>=6.1.1
+tqdm>=4.66.1 

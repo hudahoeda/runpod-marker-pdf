@@ -1,0 +1,20 @@
+[
+  {
+    "hardwareConfig": {
+      "endpointConfig": {
+        "gpuIds": "AMPERE_16",
+        "name": "16GB GPU"
+      }
+    },
+    "input": {
+      "pdf": "https://arxiv.org/pdf/1804.07821.pdf",
+      "output_format": "markdown",
+      "paginate_output": false,
+      "use_llm": false,
+      "disable_image_extraction": false,
+      "force_ocr": false,
+      "strip_existing_ocr": false,
+      "model": "default"
+    }
+  }
+] 
