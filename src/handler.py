@@ -1,5 +1,5 @@
-"""
-rp_handler.py for runpod worker
+""" 
+Handler for Marker PDF worker.
 
 This module handles the requests for the marker-pdf RunPod worker.
 """
@@ -8,14 +8,76 @@ import os
 import tempfile
 import time
 
-from rp_schema import INPUT_VALIDATIONS
 from runpod.serverless.utils import download_files_from_urls, rp_cleanup, rp_debugger
 from runpod.serverless.utils.rp_validator import validate
 import runpod
-import predict
 
+# Import predict module from current directory
+from predict import Predictor
 
-MODEL = predict.Predictor()
+# Input validation schema
+INPUT_VALIDATIONS = {
+    'pdf': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'pdf_base64': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'output_format': {
+        'type': str,
+        'required': False,
+        'default': 'markdown',
+        'enum': ['markdown', 'json', 'html']
+    },
+    'paginate_output': {
+        'type': bool,
+        'required': False,
+        'default': False
+    },
+    'use_llm': {
+        'type': bool,
+        'required': False,
+        'default': False
+    },
+    'disable_image_extraction': {
+        'type': bool,
+        'required': False,
+        'default': False
+    },
+    'page_range': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'force_ocr': {
+        'type': bool,
+        'required': False,
+        'default': False
+    },
+    'strip_existing_ocr': {
+        'type': bool,
+        'required': False,
+        'default': False
+    },
+    'languages': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'model': {
+        'type': str,
+        'required': False,
+        'default': 'default',
+        'enum': ['default', 'table']
+    }
+}
+
+# Load the model into memory to make running multiple predictions efficient
+MODEL = Predictor()
 MODEL.setup()
 
 
@@ -35,17 +97,10 @@ def base64_to_tempfile(base64_file: str) -> str:
     return temp_file.name
 
 
-@rp_debugger.FunctionTimer
-def run_marker_pdf_job(job):
-    '''
-    Run the marker pdf conversion.
-
-    Parameters:
-    job (dict): Input job containing the model parameters
-
-    Returns:
-    dict: The result of the conversion
-    '''
+def handler(job):
+    """
+    Handler function that will be used to process jobs.
+    """
     job_input = job['input']
     start_time = time.time()
 
@@ -93,4 +148,4 @@ def run_marker_pdf_job(job):
     return results
 
 
-runpod.serverless.start({"handler": run_marker_pdf_job}) 
+runpod.serverless.start({"handler": handler}) 

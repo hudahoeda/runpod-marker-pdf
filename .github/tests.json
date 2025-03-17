@@ -2,19 +2,22 @@
   {
     "hardwareConfig": {
       "endpointConfig": {
-        "gpuIds": "AMPERE_16",
-        "name": "16GB GPU"
+        "gpuIds": "AMPERE_16,AMPERE_24,AMPERE_48,AMPERE_80"
       }
     },
     "input": {
-      "pdf": "https://arxiv.org/pdf/1804.07821.pdf",
-      "output_format": "markdown",
-      "paginate_output": false,
-      "use_llm": false,
-      "disable_image_extraction": false,
-      "force_ocr": false,
-      "strip_existing_ocr": false,
-      "model": "default"
+      "pdf": "https://arxiv.org/pdf/1804.07821.pdf"
+    }
+  },
+  {
+    "hardwareConfig": {
+      "endpointConfig": {
+        "gpuIds": "AMPERE_16,AMPERE_24,AMPERE_48,AMPERE_80"
+      }
+    },
+    "input": {
+      "pdf": "https://arxiv.org/pdf/1706.03762.pdf",
+      "output_format": "json"
     }
   }
 ] 

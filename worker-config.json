@@ -1,0 +1,127 @@
+{
+    "schema": {
+        "pdf": {
+            "env_var_name": "PDF",
+            "value": "",
+            "title": "PDF URL",
+            "description": "URL of the PDF file to convert",
+            "required": false,
+            "type": "text"
+        },
+        "pdf_base64": {
+            "env_var_name": "PDF_BASE64",
+            "value": "",
+            "title": "PDF Base64",
+            "description": "Base64-encoded PDF file to convert",
+            "required": false,
+            "type": "text"
+        },
+        "output_format": {
+            "env_var_name": "OUTPUT_FORMAT",
+            "value": "markdown",
+            "title": "Output Format",
+            "description": "Choose the format for the output.",
+            "required": false,
+            "type": "select",
+            "options": [
+                { "value": "markdown", "label": "markdown" },
+                { "value": "json", "label": "json" },
+                { "value": "html", "label": "html" }
+            ]
+        },
+        "paginate_output": {
+            "env_var_name": "PAGINATE_OUTPUT",
+            "value": false,
+            "title": "Paginate Output",
+            "description": "Paginates the output, using \\n\\n{PAGE_NUMBER} followed by separators.",
+            "required": false,
+            "type": "toggle"
+        },
+        "use_llm": {
+            "env_var_name": "USE_LLM",
+            "value": false,
+            "title": "Use LLM",
+            "description": "Uses an LLM to improve accuracy.",
+            "required": false,
+            "type": "toggle"
+        },
+        "disable_image_extraction": {
+            "env_var_name": "DISABLE_IMAGE_EXTRACTION",
+            "value": false,
+            "title": "Disable Image Extraction",
+            "description": "Don't extract images from the PDF.",
+            "required": false,
+            "type": "toggle"
+        },
+        "page_range": {
+            "env_var_name": "PAGE_RANGE",
+            "value": "",
+            "title": "Page Range",
+            "description": "Specify which pages to process. Accepts comma-separated page numbers and ranges. Example: \"0,5-10,20\"",
+            "required": false,
+            "type": "text"
+        },
+        "force_ocr": {
+            "env_var_name": "FORCE_OCR",
+            "value": false,
+            "title": "Force OCR",
+            "description": "Force OCR processing on the entire document, even for pages that might contain extractable text.",
+            "required": false,
+            "type": "toggle"
+        },
+        "strip_existing_ocr": {
+            "env_var_name": "STRIP_EXISTING_OCR",
+            "value": false,
+            "title": "Strip Existing OCR",
+            "description": "Remove all existing OCR text in the document and re-OCR with surya.",
+            "required": false,
+            "type": "toggle"
+        },
+        "languages": {
+            "env_var_name": "LANGUAGES",
+            "value": "",
+            "title": "Languages",
+            "description": "Optionally specify which languages to use for OCR processing. Accepts a comma-separated list. Example: \"en,fr,de\"",
+            "required": false,
+            "type": "text"
+        },
+        "model": {
+            "env_var_name": "MODEL",
+            "value": "default",
+            "title": "Model",
+            "description": "Choose a model size.",
+            "required": false,
+            "type": "select",
+            "options": [
+                { "value": "default", "label": "default" },
+                { "value": "table", "label": "table" }
+            ]
+        }
+    },
+    "versions": {
+        "1.6.1": {
+            "imageName": "runpod/marker-pdf:1.6.1",
+            "minimumCudaVersion": "11.7",
+            "categories": [
+                {
+                    "title": "Input Settings",
+                    "settings": [
+                        "pdf", "pdf_base64"
+                    ]
+                },
+                {
+                    "title": "Output Settings",
+                    "settings": [
+                        "output_format", "paginate_output", "disable_image_extraction"
+                    ]
+                },
+                {
+                    "title": "Processing Settings",
+                    "settings": [
+                        "use_llm", "page_range", "force_ocr", "strip_existing_ocr", "languages", "model"
+                    ]
+                }
+            ]
+        }
+    }
+} 
