@@ -17,6 +17,7 @@ from marker.converters.table import TableConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
 from runpod.serverless.utils import rp_cuda
+from marker.services.gemini import GoogleGeminiService
 
 
 class Predictor:
@@ -90,27 +91,20 @@ class Predictor:
         """
         Run a single prediction on the model
         """
-        # Set up configuration dictionary
-        config = {
-            "output_format": output_format,
-            "paginate_output": paginate_output,
-            "use_llm": use_llm,
-            "disable_image_extraction": disable_image_extraction,
-            "force_ocr": force_ocr,
-            "strip_existing_ocr": strip_existing_ocr,
-        }
-        
-        # Add optional configurations
-        if page_range:
-            config["page_range"] = page_range
-            
-        if languages:
-            config["languages"] = languages.split(",")
-            
-        # Determine which converter to use
+        # Instantiate LLM service if use_llm is true
+        llm_service_instance = None
+        if use_llm:
+            try:
+                # Assuming GoogleGeminiService reads GOOGLE_API_KEY from env
+                llm_service_instance = GoogleGeminiService()
+            except ImportError:
+                print("Warning: GoogleGeminiService could not be imported. LLM features might be unavailable.", file=sys.stderr)
+            except Exception as e:
+                print(f"Warning: Could not instantiate GoogleGeminiService: {e}. LLM features might be unavailable.", file=sys.stderr)
+
+        # Determine converter class
         if model == "table":
             converter_class = TableConverter
-            config["force_layout_block"] = "Table"
         else:
             converter_class = PdfConverter
         
@@ -119,15 +113,28 @@ class Predictor:
         
         # Create the converter instance
         converter = converter_class(
-            artifact_dict=self.model_artifacts
+            artifact_dict=self.model_artifacts,
+            llm_service=llm_service_instance
         )
         
         # Prepare options for the converter's __call__ method.
-        # "output_format" and "paginate_output" are handled after the conversion.
+        # These options should not include 'use_llm', 'output_format', 'paginate_output'.
         call_options = {
-            k: v for k, v in config.items() 
-            if k not in ["output_format", "paginate_output"]
+            "disable_image_extraction": disable_image_extraction,
+            "force_ocr": force_ocr,
+            "strip_existing_ocr": strip_existing_ocr,
         }
+        
+        if page_range:
+            call_options["page_range"] = page_range
+            
+        if languages:
+            call_options["languages"] = languages.split(",")
+            
+        if model == "table":
+            # Add force_layout_block for TableConverter if it's a __call__ option
+            # (as suggested by its original placement in the old 'config' dict)
+            call_options["force_layout_block"] = "Table"
         
         # Convert the PDF
         rendered = converter(str(pdf_path), **call_options)
