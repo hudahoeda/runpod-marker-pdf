@@ -145,30 +145,45 @@ class Predictor:
             
             # Process images if they were extracted
             if not disable_image_extraction and hasattr(rendered, 'images') and rendered.images:
-                images = []
-                # Limit to maximum 10 images to prevent response size issues
-                max_images = min(10, len(rendered.images))
+                processed_images_list = [] # Use a new name for clarity
                 
-                for i, img in enumerate(rendered.images[:max_images]):
-                    # Get image path
-                    image_path = Path(img)
-                    if image_path.exists():
-                        try:
-                            # Optimize and encode the image
-                            optimized_img_data = self._optimize_image(image_path)
-                            img_data = base64.b64encode(optimized_img_data).decode("utf-8")
-                            images.append({
-                                "filename": image_path.name,
-                                "data": img_data
-                            })
-                        except Exception as e:
-                            print(f"Error processing image {i}: {str(e)}", file=sys.stderr)
+                source_image_references = []
+                if isinstance(rendered.images, dict):
+                    source_image_references = list(rendered.images.values())
+                elif isinstance(rendered.images, list):
+                    source_image_references = rendered.images
+                else:
+                    print(f"Warning: rendered.images is of unexpected type: {type(rendered.images)}. Skipping image processing.", file=sys.stderr)
+
+                if source_image_references:
+                    max_images_to_process = min(10, len(source_image_references))
+                    
+                    for i, img_ref in enumerate(source_image_references[:max_images_to_process]):
+                        # Get image path
+                        image_path = Path(img_ref) # Assuming img_ref is a path or path-like
+                        if image_path.exists():
+                            try:
+                                # Optimize and encode the image
+                                optimized_img_data = self._optimize_image(image_path)
+                                img_data = base64.b64encode(optimized_img_data).decode("utf-8")
+                                processed_images_list.append({
+                                    "filename": image_path.name,
+                                    "data": img_data
+                                })
+                            except Exception as e:
+                                print(f"Error processing image {i} ({image_path}): {str(e)}", file=sys.stderr)
+                        else:
+                            print(f"Warning: Image path does not exist {image_path}", file=sys.stderr)
                 
-                results["images"] = images
-                if len(rendered.images) > max_images:
-                    results["images_truncated"] = True
-                    results["total_images"] = len(rendered.images)
-                
+                    if processed_images_list:
+                        results["images"] = processed_images_list
+
+                    if len(source_image_references) > max_images_to_process and processed_images_list:
+                        results["images_truncated"] = True
+                        results["total_images"] = len(source_image_references)
+                    elif len(source_image_references) > 0 and not processed_images_list : # Had images, but none were processed
+                        results["total_images"] = len(source_image_references)
+
         elif output_format == "json":
             # For JSON output, we need to convert the pydantic model to dict
             json_data = rendered.json()
@@ -186,29 +201,44 @@ class Predictor:
             
             # Process images if they were extracted
             if not disable_image_extraction and hasattr(rendered, 'images') and rendered.images:
-                images = []
-                # Limit to maximum 10 images to prevent response size issues
-                max_images = min(10, len(rendered.images))
+                processed_images_list = [] # Use a new name for clarity
                 
-                for i, img in enumerate(rendered.images[:max_images]):
-                    # Get image path
-                    image_path = Path(img)
-                    if image_path.exists():
-                        try:
-                            # Optimize and encode the image
-                            optimized_img_data = self._optimize_image(image_path)
-                            img_data = base64.b64encode(optimized_img_data).decode("utf-8")
-                            images.append({
-                                "filename": image_path.name,
-                                "data": img_data
-                            })
-                        except Exception as e:
-                            print(f"Error processing image {i}: {str(e)}", file=sys.stderr)
-                
-                results["images"] = images
-                if len(rendered.images) > max_images:
-                    results["images_truncated"] = True
-                    results["total_images"] = len(rendered.images)
+                source_image_references = []
+                if isinstance(rendered.images, dict):
+                    source_image_references = list(rendered.images.values())
+                elif isinstance(rendered.images, list):
+                    source_image_references = rendered.images
+                else:
+                    print(f"Warning: rendered.images is of unexpected type: {type(rendered.images)}. Skipping image processing.", file=sys.stderr)
+
+                if source_image_references:
+                    max_images_to_process = min(10, len(source_image_references))
+                    
+                    for i, img_ref in enumerate(source_image_references[:max_images_to_process]):
+                        # Get image path
+                        image_path = Path(img_ref) # Assuming img_ref is a path or path-like
+                        if image_path.exists():
+                            try:
+                                # Optimize and encode the image
+                                optimized_img_data = self._optimize_image(image_path)
+                                img_data = base64.b64encode(optimized_img_data).decode("utf-8")
+                                processed_images_list.append({
+                                    "filename": image_path.name,
+                                    "data": img_data
+                                })
+                            except Exception as e:
+                                print(f"Error processing image {i} ({image_path}): {str(e)}", file=sys.stderr)
+                        else:
+                            print(f"Warning: Image path does not exist {image_path}", file=sys.stderr)
+
+                    if processed_images_list:
+                        results["images"] = processed_images_list
+                        
+                    if len(source_image_references) > max_images_to_process and processed_images_list:
+                        results["images_truncated"] = True
+                        results["total_images"] = len(source_image_references)
+                    elif len(source_image_references) > 0 and not processed_images_list : # Had images, but none were processed
+                        results["total_images"] = len(source_image_references)
         
         # Additional info
         results["device"] = device
