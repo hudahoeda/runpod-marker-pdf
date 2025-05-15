@@ -102,9 +102,23 @@ class Predictor:
             except Exception as e:
                 print(f"Warning: Could not instantiate GoogleGeminiService: {e}. LLM features might be unavailable.", file=sys.stderr)
 
-        # Determine converter class
+        # Prepare the configuration dictionary for the converter constructor
+        converter_config = {
+            "disable_image_extraction": disable_image_extraction,
+            "force_ocr": force_ocr,
+            "strip_existing_ocr": strip_existing_ocr,
+        }
+        
+        if page_range:
+            converter_config["page_range"] = page_range # marker might expect a list/parsed format
+            
+        if languages:
+            converter_config["languages"] = languages.split(",")
+            
+        # Determine converter class and update config if model is "table"
         if model == "table":
             converter_class = TableConverter
+            converter_config["force_layout_block"] = "Table"
         else:
             converter_class = PdfConverter
         
@@ -114,30 +128,12 @@ class Predictor:
         # Create the converter instance
         converter = converter_class(
             artifact_dict=self.model_artifacts,
-            llm_service=llm_service_instance
+            llm_service=llm_service_instance,
+            config=converter_config # Pass the config dictionary here
         )
         
-        # Prepare options for the converter's __call__ method.
-        # These options should not include 'use_llm', 'output_format', 'paginate_output'.
-        call_options = {
-            "disable_image_extraction": disable_image_extraction,
-            "force_ocr": force_ocr,
-            "strip_existing_ocr": strip_existing_ocr,
-        }
-        
-        if page_range:
-            call_options["page_range"] = page_range
-            
-        if languages:
-            call_options["languages"] = languages.split(",")
-            
-        if model == "table":
-            # Add force_layout_block for TableConverter if it's a __call__ option
-            # (as suggested by its original placement in the old 'config' dict)
-            call_options["force_layout_block"] = "Table"
-        
-        # Convert the PDF
-        rendered = converter(str(pdf_path), **call_options)
+        # Convert the PDF - __call__ method should only take the path
+        rendered = converter(str(pdf_path))
         
         # Process results based on output format
         results = {}
@@ -216,6 +212,6 @@ class Predictor:
         
         # Additional info
         results["device"] = device
-        results["model"] = model
+        results["model"] = model # 'model' is the original input parameter
             
         return results 
