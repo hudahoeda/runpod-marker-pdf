@@ -119,12 +119,18 @@ class Predictor:
         
         # Create the converter instance
         converter = converter_class(
-            artifact_dict=self.model_artifacts,
-            **config
+            artifact_dict=self.model_artifacts
         )
         
+        # Prepare options for the converter's __call__ method.
+        # "output_format" and "paginate_output" are handled after the conversion.
+        call_options = {
+            k: v for k, v in config.items() 
+            if k not in ["output_format", "paginate_output"]
+        }
+        
         # Convert the PDF
-        rendered = converter(str(pdf_path))
+        rendered = converter(str(pdf_path), **call_options)
         
         # Process results based on output format
         results = {}
