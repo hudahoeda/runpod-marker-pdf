@@ -31,49 +31,76 @@ class Predictor:
         # Create model artifacts once
         self.model_artifacts = create_model_dict()
         
-    def _optimize_image(self, image_path, max_size=(1024, 1024), quality=85, max_file_size=1*1024*1024):
+    def _optimize_image(self, image_input, filename_hint="image.jpg", max_size=(1024, 1024), quality=85, max_file_size=1*1024*1024):
         """
         Optimize an image to reduce its file size before encoding to base64.
         
         Args:
-            image_path: Path to the image file
+            image_input: Path to the image file or a PIL.Image.Image object
+            filename_hint: A filename to use if the input is an Image object or if path processing fails
             max_size: Maximum dimensions (width, height) to resize to
             quality: JPEG quality (1-100)
             max_file_size: Maximum file size in bytes
             
         Returns:
-            bytes: Optimized image data
+            tuple: (Optimized image data as bytes, filename as str) or (None, filename_hint) on failure
         """
+        img = None
+        actual_filename = filename_hint
+
         try:
-            with Image.open(image_path) as img:
-                # Convert to RGB if RGBA
-                if img.mode == 'RGBA':
-                    img = img.convert('RGB')
-                
-                # Resize if necessary
-                if img.width > max_size[0] or img.height > max_size[1]:
-                    img.thumbnail(max_size, Image.LANCZOS)
-                
-                # Save to memory buffer
+            if isinstance(image_input, Image.Image):
+                img = image_input
+                # actual_filename remains filename_hint as we don't have an original path
+            elif isinstance(image_input, (str, Path)):
+                image_path_obj = Path(image_input)
+                actual_filename = image_path_obj.name
+                if not image_path_obj.exists():
+                    print(f"Error: Image path {image_path_obj} does not exist.", file=sys.stderr)
+                    return None, actual_filename
+                img = Image.open(image_path_obj)
+            else:
+                print(f"Error: Unsupported image input type {type(image_input)}.", file=sys.stderr)
+                return None, actual_filename
+
+            if img is None: # Should be caught by previous checks, but as a safeguard
+                print(f"Error: Image could not be processed from input.", file=sys.stderr)
+                return None, actual_filename
+
+            # Convert to RGB if RGBA
+            if img.mode == 'RGBA':
+                img = img.convert('RGB')
+            
+            # Resize if necessary
+            if img.width > max_size[0] or img.height > max_size[1]:
+                img.thumbnail(max_size, Image.LANCZOS)
+            
+            # Save to memory buffer
+            buffer = BytesIO()
+            img.save(buffer, format="JPEG", quality=quality, optimize=True)
+            
+            # If still too large, reduce quality until under max_file_size
+            data = buffer.getvalue()
+            current_quality = quality
+            
+            while len(data) > max_file_size and current_quality > 10:
+                current_quality -= 10
                 buffer = BytesIO()
-                img.save(buffer, format="JPEG", quality=quality, optimize=True)
-                
-                # If still too large, reduce quality until under max_file_size
+                img.save(buffer, format="JPEG", quality=current_quality, optimize=True)
                 data = buffer.getvalue()
-                current_quality = quality
-                
-                while len(data) > max_file_size and current_quality > 10:
-                    current_quality -= 10
-                    buffer = BytesIO()
-                    img.save(buffer, format="JPEG", quality=current_quality, optimize=True)
-                    data = buffer.getvalue()
-                
-                return data
+            
+            return data, actual_filename
         except Exception as e:
-            print(f"Error optimizing image {image_path}: {str(e)}", file=sys.stderr)
-            # Return original file if optimization fails
-            with open(image_path, "rb") as f:
-                return f.read()
+            error_source_info = actual_filename if isinstance(image_input, (str, Path)) else f"PIL.Image object ({filename_hint})"
+            print(f"Error optimizing image {error_source_info}: {str(e)}", file=sys.stderr)
+            # Fallback for path input, try to return original if it exists
+            if isinstance(image_input, (str, Path)) and Path(image_input).exists():
+                try:
+                    with open(image_input, "rb") as f:
+                        return f.read(), actual_filename
+                except Exception as e_read:
+                    print(f"Error reading original image {actual_filename} during fallback: {str(e_read)}", file=sys.stderr)
+            return None, actual_filename
         
     def predict(
         self,
@@ -159,21 +186,34 @@ class Predictor:
                     max_images_to_process = min(10, len(source_image_references))
                     
                     for i, img_ref in enumerate(source_image_references[:max_images_to_process]):
-                        # Get image path
-                        image_path = Path(img_ref) # Assuming img_ref is a path or path-like
-                        if image_path.exists():
+                        optimized_img_data = None
+                        img_filename = f"image_{i}.jpg" # Default/fallback filename
+
+                        if isinstance(img_ref, (str, Path)):
+                            # It's a path-like object
+                            image_path_obj = Path(img_ref)
+                            if image_path_obj.exists():
+                                optimized_img_data, img_filename = self._optimize_image(image_path_obj)
+                            else:
+                                print(f"Warning: Image path does not exist {image_path_obj}", file=sys.stderr)
+                        elif isinstance(img_ref, Image.Image): # It's a PIL Image object
+                            optimized_img_data, img_filename = self._optimize_image(img_ref, filename_hint=f"embedded_image_{i}.jpg")
+                        else:
+                            print(f"Warning: img_ref is of unsupported type: {type(img_ref)}. Skipping image {i}.", file=sys.stderr)
+                            continue # Skip to next image processing
+
+                        if optimized_img_data:
                             try:
                                 # Optimize and encode the image
-                                optimized_img_data = self._optimize_image(image_path)
                                 img_data = base64.b64encode(optimized_img_data).decode("utf-8")
                                 processed_images_list.append({
-                                    "filename": image_path.name,
+                                    "filename": img_filename, # Use filename from _optimize_image
                                     "data": img_data
                                 })
                             except Exception as e:
-                                print(f"Error processing image {i} ({image_path}): {str(e)}", file=sys.stderr)
-                        else:
-                            print(f"Warning: Image path does not exist {image_path}", file=sys.stderr)
+                                print(f"Error encoding image {i} ({img_filename}): {str(e)}", file=sys.stderr)
+                        # else: # Optional: log if optimization returned None
+                        #     print(f"Warning: Optimization failed for image {i} ({img_filename if img_filename else img_ref})", file=sys.stderr)
                 
                     if processed_images_list:
                         results["images"] = processed_images_list
@@ -215,21 +255,34 @@ class Predictor:
                     max_images_to_process = min(10, len(source_image_references))
                     
                     for i, img_ref in enumerate(source_image_references[:max_images_to_process]):
-                        # Get image path
-                        image_path = Path(img_ref) # Assuming img_ref is a path or path-like
-                        if image_path.exists():
+                        optimized_img_data = None
+                        img_filename = f"image_{i}.jpg" # Default/fallback filename
+
+                        if isinstance(img_ref, (str, Path)):
+                            # It's a path-like object
+                            image_path_obj = Path(img_ref)
+                            if image_path_obj.exists():
+                                optimized_img_data, img_filename = self._optimize_image(image_path_obj)
+                            else:
+                                print(f"Warning: Image path does not exist {image_path_obj}", file=sys.stderr)
+                        elif isinstance(img_ref, Image.Image): # It's a PIL Image object
+                            optimized_img_data, img_filename = self._optimize_image(img_ref, filename_hint=f"embedded_image_{i}.jpg")
+                        else:
+                            print(f"Warning: img_ref is of unsupported type: {type(img_ref)}. Skipping image {i}.", file=sys.stderr)
+                            continue # Skip to next image processing
+                        
+                        if optimized_img_data:
                             try:
                                 # Optimize and encode the image
-                                optimized_img_data = self._optimize_image(image_path)
                                 img_data = base64.b64encode(optimized_img_data).decode("utf-8")
                                 processed_images_list.append({
-                                    "filename": image_path.name,
+                                    "filename": img_filename, # Use filename from _optimize_image
                                     "data": img_data
                                 })
                             except Exception as e:
-                                print(f"Error processing image {i} ({image_path}): {str(e)}", file=sys.stderr)
-                        else:
-                            print(f"Warning: Image path does not exist {image_path}", file=sys.stderr)
+                                print(f"Error encoding image {i} ({img_filename}): {str(e)}", file=sys.stderr)
+                        # else: # Optional: log if optimization returned None
+                        #     print(f"Warning: Optimization failed for image {i} ({img_filename if img_filename else img_ref})", file=sys.stderr)
 
                     if processed_images_list:
                         results["images"] = processed_images_list
