@@ -18,24 +18,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Login to Docker Hub
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare image name
+        id: prepare-image
+        run: |
+          # Make repository name lowercase for GHCR compatibility
+          REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=ghcr.io/${REPO_NAME}/marker-pdf" >> $GITHUB_ENV
 
       # Build and push step
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
+          context: .
           push: true
-          tags: ${{ vars.DOCKERHUB_REPO }}/${{ vars.DOCKERHUB_IMG }}:${{ (github.event_name == 'release' && github.event.release.tag_name) || (github.event_name == 'workflow_dispatch' && github.event.inputs.image_tag) || 'dev' }}
+          tags: ${{ env.IMAGE_NAME }}:${{ (github.event_name == 'release' && github.event.release.tag_name) || (github.event_name == 'workflow_dispatch' && github.event.inputs.image_tag) || 'dev' }}
 
   dev-test:
     needs: docker-build
@@ -45,13 +57,20 @@ jobs:
       # Checkout
       - uses: actions/checkout@v4
 
+      - name: Prepare image name
+        id: prepare-image
+        run: |
+          # Make repository name lowercase for GHCR compatibility
+          REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=ghcr.io/${REPO_NAME}/marker-pdf" >> $GITHUB_ENV
+
       # Tests
       - name: Run Tests
         if: github.event_name != 'release'
         id: run-tests
         uses: direlines/runpod-test-runner@v1.7
         with:
-          image-tag: ${{ vars.DOCKERHUB_REPO }}/${{ vars.DOCKERHUB_IMG }}:${{ (github.event_name == 'release' && github.event.release.tag_name) || (github.event_name == 'workflow_dispatch' && github.event.inputs.image_tag) || 'dev' }}
+          image-tag: ${{ env.IMAGE_NAME }}:${{ (github.event_name == 'release' && github.event.release.tag_name) || (github.event_name == 'workflow_dispatch' && github.event.inputs.image_tag) || 'dev' }}
           runpod-api-key: ${{ secrets.RUNPOD_API_KEY }}
           request-timeout: 600
 

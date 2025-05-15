@@ -1,0 +1,24 @@
+{
+  "title": "Marker PDF Worker",
+  "description": "Converts PDF files to Markdown, JSON, or HTML using the Marker library.",
+  "type": "serverless",
+  "readme": "README.md",
+  "iconFile": "icon.png",
+  "category": "AI Model",
+  "config": {
+    "templateId": "marker-pdf-template",
+    "imageName": "ghcr.io/runpod-workers/marker-pdf:latest",
+    "runsOn": "GPU",
+    "containerDiskInGb": 25,
+    "gpuIds": "NVIDIA GeForce RTX 3090",
+    "gpuCount": 1,
+    "ports": "8080/http",
+    "healthCheck": "/health",
+    "maxConcurrency": 10,
+    "allowedCudaVersions": ["11.8", "11.7"],
+    "volumeMountPath": "/data",
+    "env": [
+        {"key": "HUGGING_FACE_HUB_TOKEN", "value": "YOUR_HF_TOKEN_IF_NEEDED"}
+    ]
+  }
+} 

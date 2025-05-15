@@ -100,7 +100,7 @@
     },
     "versions": {
         "1.6.1": {
-            "imageName": "runpod/marker-pdf:1.6.1",
+            "imageName": "ghcr.io/runpod-workers/marker-pdf:1.6.1",
             "minimumCudaVersion": "11.7",
             "categories": [
                 {

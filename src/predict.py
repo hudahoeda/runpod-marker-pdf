@@ -6,8 +6,11 @@ using the marker-pdf library.
 import base64
 import json
 import os
+import sys
 from pathlib import Path
 import tempfile
+from io import BytesIO
+from PIL import Image
 
 from marker.converters.pdf import PdfConverter
 from marker.converters.table import TableConverter
@@ -26,6 +29,50 @@ class Predictor:
         """Load the model into memory to make running multiple predictions efficient"""
         # Create model artifacts once
         self.model_artifacts = create_model_dict()
+        
+    def _optimize_image(self, image_path, max_size=(1024, 1024), quality=85, max_file_size=1*1024*1024):
+        """
+        Optimize an image to reduce its file size before encoding to base64.
+        
+        Args:
+            image_path: Path to the image file
+            max_size: Maximum dimensions (width, height) to resize to
+            quality: JPEG quality (1-100)
+            max_file_size: Maximum file size in bytes
+            
+        Returns:
+            bytes: Optimized image data
+        """
+        try:
+            with Image.open(image_path) as img:
+                # Convert to RGB if RGBA
+                if img.mode == 'RGBA':
+                    img = img.convert('RGB')
+                
+                # Resize if necessary
+                if img.width > max_size[0] or img.height > max_size[1]:
+                    img.thumbnail(max_size, Image.LANCZOS)
+                
+                # Save to memory buffer
+                buffer = BytesIO()
+                img.save(buffer, format="JPEG", quality=quality, optimize=True)
+                
+                # If still too large, reduce quality until under max_file_size
+                data = buffer.getvalue()
+                current_quality = quality
+                
+                while len(data) > max_file_size and current_quality > 10:
+                    current_quality -= 10
+                    buffer = BytesIO()
+                    img.save(buffer, format="JPEG", quality=current_quality, optimize=True)
+                    data = buffer.getvalue()
+                
+                return data
+        except Exception as e:
+            print(f"Error optimizing image {image_path}: {str(e)}", file=sys.stderr)
+            # Return original file if optimization fails
+            with open(image_path, "rb") as f:
+                return f.read()
         
     def predict(
         self,
@@ -91,23 +138,39 @@ class Predictor:
             # Process images if they were extracted
             if not disable_image_extraction and hasattr(rendered, 'images') and rendered.images:
                 images = []
-                for i, img in enumerate(rendered.images):
+                # Limit to maximum 10 images to prevent response size issues
+                max_images = min(10, len(rendered.images))
+                
+                for i, img in enumerate(rendered.images[:max_images]):
                     # Get image path
                     image_path = Path(img)
                     if image_path.exists():
-                        # Read image and convert to base64
-                        with open(image_path, "rb") as img_file:
-                            img_data = base64.b64encode(img_file.read()).decode("utf-8")
+                        try:
+                            # Optimize and encode the image
+                            optimized_img_data = self._optimize_image(image_path)
+                            img_data = base64.b64encode(optimized_img_data).decode("utf-8")
                             images.append({
                                 "filename": image_path.name,
                                 "data": img_data
                             })
+                        except Exception as e:
+                            print(f"Error processing image {i}: {str(e)}", file=sys.stderr)
+                
                 results["images"] = images
+                if len(rendered.images) > max_images:
+                    results["images_truncated"] = True
+                    results["total_images"] = len(rendered.images)
                 
         elif output_format == "json":
             # For JSON output, we need to convert the pydantic model to dict
             json_data = rendered.json()
-            results = json.loads(json_data)
+            parsed_data = json.loads(json_data)
+            
+            # For JSON output, don't include the images to keep the response size manageable
+            if 'images' in parsed_data:
+                del parsed_data['images']
+            
+            results = parsed_data
             
         elif output_format == "html":
             results["html"] = rendered.html
@@ -116,18 +179,28 @@ class Predictor:
             # Process images if they were extracted
             if not disable_image_extraction and hasattr(rendered, 'images') and rendered.images:
                 images = []
-                for i, img in enumerate(rendered.images):
+                # Limit to maximum 10 images to prevent response size issues
+                max_images = min(10, len(rendered.images))
+                
+                for i, img in enumerate(rendered.images[:max_images]):
                     # Get image path
                     image_path = Path(img)
                     if image_path.exists():
-                        # Read image and convert to base64
-                        with open(image_path, "rb") as img_file:
-                            img_data = base64.b64encode(img_file.read()).decode("utf-8")
+                        try:
+                            # Optimize and encode the image
+                            optimized_img_data = self._optimize_image(image_path)
+                            img_data = base64.b64encode(optimized_img_data).decode("utf-8")
                             images.append({
                                 "filename": image_path.name,
                                 "data": img_data
                             })
+                        except Exception as e:
+                            print(f"Error processing image {i}: {str(e)}", file=sys.stderr)
+                
                 results["images"] = images
+                if len(rendered.images) > max_images:
+                    results["images_truncated"] = True
+                    results["total_images"] = len(rendered.images)
         
         # Additional info
         results["device"] = device
