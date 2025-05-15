@@ -29,7 +29,7 @@ ADD src .
 # This is a placeholder command; you'll need to adapt it based on how marker-pdf caches models.
 # If create_model_dict() downloads to a standard Hugging Face cache, and runpod/base configures it, this might be enough.
 # Otherwise, you might need a dedicated script.
-RUN python3.11 -c "import sys; sys.path.append('.'); from src.predict import Predictor; p = Predictor(); p.setup()"
+RUN python3.11 -c "import sys; sys.path.append('.'); from predict import Predictor; p = Predictor(); p.setup()"
 
 # Set default command
-CMD python3.11 -u /src/handler.py 
+CMD python3.11 -u /handler.py 
