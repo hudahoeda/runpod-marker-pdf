@@ -120,7 +120,6 @@ class Predictor:
         # Create the converter instance
         converter = converter_class(
             artifact_dict=self.model_artifacts,
-            device=device,
             **config
         )
         
