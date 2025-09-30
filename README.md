@@ -1,55 +1,96 @@
-<div align="center">
+# Marker Document Converter Worker
 
-<h1>Marker PDF | Worker</h1>
+This repository packages a RunPod Serverless worker that converts documents to
+Markdown, JSON, or HTML using the
+[Marker](https://github.com/VikParuchuri/marker) library. It supports PDFs,
+Office documents, images, HTML, and more via Marker’s `full` feature set.
 
-This repository contains the [Marker PDF](https://github.com/VikParuchuri/marker) Worker for RunPod. The Marker PDF Worker is designed to convert PDF files to Markdown, with support for tables, images, equations, and more. It's part of the RunPod Workers collection aimed at providing diverse functionality for endpoint processing.
+[![RunPod](https://api.runpod.io/badge/hudahoeda/runpod-marker-pdf)](https://console.runpod.io/hub/hudahoeda/runpod-marker-pdf)
 
-</div>
+---
 
-## Model Inputs
+## Getting Started
 
-| Input                               | Type  | Description                                                                                                                                              |
-|-------------------------------------|-------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `pdf`                               | Path  | PDF file to convert                                                                                                                                      |
-| `pdf_base64`                        | str   | Base64-encoded PDF file                                                                                                                                  |
-| `output_format`                     | str   | Choose the format for the output. Choices: "markdown", "json", "html". Default: "markdown"                                                               |
-| `paginate_output`                   | bool  | Paginates the output, using \n\n{PAGE_NUMBER} followed by separators. Default: False                                                                     |
-| `use_llm`                           | bool  | Uses an LLM to improve accuracy. Default: False                                                                                                          |
-| `disable_image_extraction`          | bool  | Don't extract images from the PDF. Default: False                                                                                                        |
-| `page_range`                        | str   | Specify which pages to process. Accepts comma-separated page numbers and ranges. Example: "0,5-10,20"                                                   |
-| `force_ocr`                         | bool  | Force OCR processing on the entire document, even for pages that might contain extractable text. Default: False                                          |
-| `strip_existing_ocr`                | bool  | Remove all existing OCR text in the document and re-OCR with surya. Default: False                                                                       |
-| `languages`                         | str   | Optionally specify which languages to use for OCR processing. Accepts a comma-separated list. Example: "en,fr,de"                                        |
-| `model`                             | str   | Choose a model size. Choices: "default", "table". Default: "default"                                                                                    |
+1. **Use this template** – clone or fork the repository.
+2. **Install dependencies** – `pip install -r requirements.txt` (Python 3.11+).
+3. **Test locally** – `python handler.py --test` runs the worker with
+   `test_input.json`.
+4. **Deploy** – connect the repo to RunPod Serverless or build/push the Docker
+   image manually.
 
-## Test Inputs
+## Repository Layout
 
-The following inputs can be used for testing the model:
+```
+runpod-marker-pdf/
+├── Dockerfile          # Container definition based on runpod/base
+├── handler.py          # RunPod handler entrypoint
+├── predict.py          # Marker conversion helper class
+├── requirements.txt    # Python dependencies (installed with uv)
+├── test_input.json     # Sample event payload for local testing
+├── LICENSE
+└── .runpod/
+    ├── hub.json        # Hub listing metadata
+    └── tests.json      # Automated Hub test configuration
+```
+
+## Worker Inputs
+
+The handler accepts the following keys under the `input` payload:
+
+| Key                       | Type  | Description |
+|---------------------------|-------|-------------|
+| `file`                    | str   | Direct URL to the document. |
+| `file_base64`             | str   | Base64-encoded document payload. |
+| `filename`                | str   | Optional filename hint (helps detect base64 types). |
+| `output_format`           | str   | `markdown`, `json`, or `html`. Default `markdown`. |
+| `paginate_output`         | bool  | Insert page break markers. |
+| `use_llm`                 | bool  | Enable LLM-assisted formatting (requires LLM credentials). |
+| `disable_image_extraction`| bool  | Skip image extraction to reduce payload size. |
+| `page_range`              | str   | Page list/ranges (e.g. `0,5-10`). |
+| `force_ocr`               | bool  | Force OCR on every page. |
+| `strip_existing_ocr`      | bool  | Remove embedded OCR text before processing. |
+| `languages`               | str   | Comma-separated OCR languages. |
+| `model`                   | str   | Converter pipeline (`default` or `table`). |
+
+Provide either `file` or `file_base64` (not both).
+
+## Running Locally
+
+```
+pip install -r requirements.txt
+python handler.py --test
+```
+
+The `--test` flag loads `test_input.json`, runs the handler once, and prints the
+result. Remove the flag to start the worker as RunPod would in production.
+
+## Sample Output
 
 ```json
 {
-    "input": {
-        "pdf": "https://arxiv.org/pdf/1804.07821.pdf"
+  "markdown": "# Multi-column CNN for Single Image\n\n**Abstract**—In this paper we propose a multi-column CNN-based architecture...",
+  "images": [
+    {
+      "filename": "image_0.jpg",
+      "data": "base64_encoded_image_data"
     }
+  ],
+  "metadata": {
+    "title": "Multi-column CNN for Single Image",
+    "pages": 8,
+    "detected_language": "en"
+  }
 }
 ```
 
-## Sample output
-```json
-{
-    "markdown": "# Multi-column CNN for Single Image\n\n**Abstract**—In this paper we propose a multi-column CNN-based architecture...",
-    "images": [
-        {
-            "filename": "image_0.png",
-            "data": "base64_encoded_image_data"
-        }
-    ],
-    "metadata": {
-        "title": "Multi-column CNN for Single Image",
-        "pages": 8,
-        "detected_language": "en"
-    }
-}
-``` 
+## Deploying to RunPod
 
-[![Runpod](https://api.runpod.io/badge/hudahoeda/runpod-marker-pdf)](https://console.runpod.io/hub/hudahoeda/runpod-marker-pdf)
+You can deploy via:
+
+1. **GitHub integration (recommended)** – connect the repository in the RunPod
+   console; builds trigger on pushes.
+2. **Manual Docker build** – `docker build -t <image>` then push to your
+   registry and point a RunPod template at the image.
+
+See the [RunPod Serverless documentation](https://docs.runpod.io/serverless/overview)
+for detailed deployment steps.

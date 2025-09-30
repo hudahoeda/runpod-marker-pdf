@@ -1,35 +1,25 @@
-# Base image -> https://github.com/runpod/containers/blob/main/official-templates/base/Dockerfile
-# DockerHub -> https://hub.docker.com/r/runpod/base/tags
-FROM runpod/base:0.4.0-cuda11.8.0
+FROM runpod/base:0.6.3-cuda11.8.0
 
-# The base image comes with many system dependencies pre-installed to help you get started quickly.
-# Please refer to the base image's Dockerfile for more information before adding additional dependencies.
-# IMPORTANT: The base image overrides the default huggingface cache location.
+# Ensure python 3.11 is the default interpreter
+RUN ln -sf $(which python3.11) /usr/local/bin/python \
+    && ln -sf $(which python3.11) /usr/local/bin/python3
 
-# Set working directory
-WORKDIR /
+WORKDIR /workspace
 
-# --- System dependencies ---
-COPY builder/setup.sh /setup.sh
-RUN /bin/bash /setup.sh && \
-    rm /setup.sh
+# Install minimal system dependencies for image processing
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgl1 libx11-6 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Python dependencies
-COPY builder/requirements.txt /requirements.txt
-RUN python3.11 -m pip install --upgrade pip && \
-    python3.11 -m pip install --upgrade -r /requirements.txt --no-cache-dir && \
-    # Make sure Pillow is installed with all needed features for image processing
-    python3.11 -m pip install --upgrade Pillow --no-cache-dir && \
-    rm /requirements.txt
+# Install Python dependencies with uv
+COPY requirements.txt /workspace/requirements.txt
+RUN uv pip install --upgrade -r /workspace/requirements.txt --no-cache-dir --system
 
-# Add src files
-ADD src .
+# Add worker sources
+COPY handler.py predict.py /workspace/
 
-# Ensure models used by marker.models.create_model_dict() are downloaded and cached during build.
-# This is a placeholder command; you'll need to adapt it based on how marker-pdf caches models.
-# If create_model_dict() downloads to a standard Hugging Face cache, and runpod/base configures it, this might be enough.
-# Otherwise, you might need a dedicated script.
-RUN python3.11 -c "import sys; sys.path.append('.'); from predict import Predictor; p = Predictor(); p.setup()"
+# Warm up marker model artifacts during build
+RUN python -c "import predict; predictor = predict.Predictor(); predictor.setup()"
 
-# Set default command
-CMD python3.11 -u /handler.py 
+# Start the serverless handler
+CMD ["python", "-u", "/workspace/handler.py"]

@@ -258,4 +258,19 @@ def handler(event):
         return {"error": error_message, "details": stack_trace}
 
 
+if __name__ == "__main__" and "--test" in sys.argv:
+    test_file = Path("test_input.json")
+    if not test_file.exists():
+        print("test_input.json not found", file=sys.stderr)
+        sys.exit(1)
+
+    payload = json.loads(test_file.read_text())
+    if "input" not in payload:
+        payload = {"input": payload}
+    payload.setdefault("id", "local-test")
+
+    result = handler(payload)
+    print(json.dumps(result, indent=2))
+    sys.exit(0)
+
 runpod.serverless.start({"handler": handler})

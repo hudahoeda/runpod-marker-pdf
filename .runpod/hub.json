@@ -3,6 +3,7 @@
   "description": "Convert PDFs, Office docs, images, and HTML into Markdown, JSON, or HTML using Marker on RunPod serverless.",
   "type": "serverless",
   "category": "language",
+  "iconUrl": "https://dummyimage.com/100x100/222/ffffff&text=MD",
   "config": {
     "runsOn": "GPU",
     "containerDiskInGb": 25,

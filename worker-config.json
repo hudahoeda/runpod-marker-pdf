@@ -1,127 +1,129 @@
 {
-    "schema": {
-        "pdf": {
-            "env_var_name": "PDF",
-            "value": "",
-            "title": "PDF URL",
-            "description": "URL of the PDF file to convert",
-            "required": false,
-            "type": "text"
-        },
-        "pdf_base64": {
-            "env_var_name": "PDF_BASE64",
-            "value": "",
-            "title": "PDF Base64",
-            "description": "Base64-encoded PDF file to convert",
-            "required": false,
-            "type": "text"
-        },
-        "output_format": {
-            "env_var_name": "OUTPUT_FORMAT",
-            "value": "markdown",
-            "title": "Output Format",
-            "description": "Choose the format for the output.",
-            "required": false,
-            "type": "select",
-            "options": [
-                { "value": "markdown", "label": "markdown" },
-                { "value": "json", "label": "json" },
-                { "value": "html", "label": "html" }
-            ]
-        },
-        "paginate_output": {
-            "env_var_name": "PAGINATE_OUTPUT",
-            "value": false,
-            "title": "Paginate Output",
-            "description": "Paginates the output, using \\n\\n{PAGE_NUMBER} followed by separators.",
-            "required": false,
-            "type": "toggle"
-        },
-        "use_llm": {
-            "env_var_name": "USE_LLM",
-            "value": false,
-            "title": "Use LLM",
-            "description": "Uses an LLM to improve accuracy.",
-            "required": false,
-            "type": "toggle"
-        },
-        "disable_image_extraction": {
-            "env_var_name": "DISABLE_IMAGE_EXTRACTION",
-            "value": false,
-            "title": "Disable Image Extraction",
-            "description": "Don't extract images from the PDF.",
-            "required": false,
-            "type": "toggle"
-        },
-        "page_range": {
-            "env_var_name": "PAGE_RANGE",
-            "value": "",
-            "title": "Page Range",
-            "description": "Specify which pages to process. Accepts comma-separated page numbers and ranges. Example: \"0,5-10,20\"",
-            "required": false,
-            "type": "text"
-        },
-        "force_ocr": {
-            "env_var_name": "FORCE_OCR",
-            "value": false,
-            "title": "Force OCR",
-            "description": "Force OCR processing on the entire document, even for pages that might contain extractable text.",
-            "required": false,
-            "type": "toggle"
-        },
-        "strip_existing_ocr": {
-            "env_var_name": "STRIP_EXISTING_OCR",
-            "value": false,
-            "title": "Strip Existing OCR",
-            "description": "Remove all existing OCR text in the document and re-OCR with surya.",
-            "required": false,
-            "type": "toggle"
-        },
-        "languages": {
-            "env_var_name": "LANGUAGES",
-            "value": "",
-            "title": "Languages",
-            "description": "Optionally specify which languages to use for OCR processing. Accepts a comma-separated list. Example: \"en,fr,de\"",
-            "required": false,
-            "type": "text"
-        },
-        "model": {
-            "env_var_name": "MODEL",
-            "value": "default",
-            "title": "Model",
-            "description": "Choose a model size.",
-            "required": false,
-            "type": "select",
-            "options": [
-                { "value": "default", "label": "default" },
-                { "value": "table", "label": "table" }
-            ]
-        }
+  "schema": {
+    "file": {
+      "env_var_name": "FILE_URL",
+      "value": "",
+      "title": "Source file URL",
+      "description": "Direct link to the document to convert (PDF, DOCX, PPTX, image, HTML, EPUB, etc.).",
+      "required": false,
+      "type": "text"
     },
-    "versions": {
-        "1.6.1": {
-            "imageName": "ghcr.io/runpod-workers/marker-pdf:1.6.1",
-            "minimumCudaVersion": "11.7",
-            "categories": [
-                {
-                    "title": "Input Settings",
-                    "settings": [
-                        "pdf", "pdf_base64"
-                    ]
-                },
-                {
-                    "title": "Output Settings",
-                    "settings": [
-                        "output_format", "paginate_output", "disable_image_extraction"
-                    ]
-                },
-                {
-                    "title": "Processing Settings",
-                    "settings": [
-                        "use_llm", "page_range", "force_ocr", "strip_existing_ocr", "languages", "model"
-                    ]
-                }
-            ]
-        }
+    "file_base64": {
+      "env_var_name": "FILE_BASE64",
+      "value": "",
+      "title": "Base64 document",
+      "description": "Base64 encoded document payload. Provide either a URL or base64, not both.",
+      "required": false,
+      "type": "text"
+    },
+    "filename": {
+      "env_var_name": "FILENAME_HINT",
+      "value": "",
+      "title": "Filename hint",
+      "description": "Optional filename (e.g. report.docx) to help detect file type when using base64 inputs.",
+      "required": false,
+      "type": "text"
+    },
+    "output_format": {
+      "env_var_name": "OUTPUT_FORMAT",
+      "value": "markdown",
+      "title": "Output format",
+      "description": "Choose the format for the output.",
+      "required": false,
+      "type": "select",
+      "options": [
+        {"value": "markdown", "label": "Markdown"},
+        {"value": "json", "label": "JSON"},
+        {"value": "html", "label": "HTML"}
+      ]
+    },
+    "paginate_output": {
+      "env_var_name": "PAGINATE_OUTPUT",
+      "value": false,
+      "title": "Paginate output",
+      "description": "Insert page break markers in the output.",
+      "required": false,
+      "type": "toggle"
+    },
+    "use_llm": {
+      "env_var_name": "USE_LLM",
+      "value": false,
+      "title": "Use LLM refinements",
+      "description": "Leverage an LLM for higher fidelity formatting (requires a configured LLM backend).",
+      "required": false,
+      "type": "toggle"
+    },
+    "disable_image_extraction": {
+      "env_var_name": "DISABLE_IMAGE_EXTRACTION",
+      "value": false,
+      "title": "Disable image extraction",
+      "description": "Skip image extraction to reduce payload size.",
+      "required": false,
+      "type": "toggle"
+    },
+    "page_range": {
+      "env_var_name": "PAGE_RANGE",
+      "value": "",
+      "title": "Page range",
+      "description": "Specify which pages to process. Accepts comma-separated page numbers and ranges (e.g. 0,5-10,20).",
+      "required": false,
+      "type": "text"
+    },
+    "force_ocr": {
+      "env_var_name": "FORCE_OCR",
+      "value": false,
+      "title": "Force OCR",
+      "description": "Force OCR processing on the entire document, even for pages that might contain extractable text.",
+      "required": false,
+      "type": "toggle"
+    },
+    "strip_existing_ocr": {
+      "env_var_name": "STRIP_EXISTING_OCR",
+      "value": false,
+      "title": "Strip existing OCR",
+      "description": "Remove all existing OCR text in the document and re-OCR with Surya.",
+      "required": false,
+      "type": "toggle"
+    },
+    "languages": {
+      "env_var_name": "LANGUAGES",
+      "value": "",
+      "title": "OCR languages",
+      "description": "Optionally specify a comma-separated list of OCR languages (e.g. en,fr,de).",
+      "required": false,
+      "type": "text"
+    },
+    "model": {
+      "env_var_name": "MODEL",
+      "value": "default",
+      "title": "Converter model",
+      "description": "Choose the converter pipeline to run.",
+      "required": false,
+      "type": "select",
+      "options": [
+        {"value": "default", "label": "Default"},
+        {"value": "table", "label": "Table extractor"}
+      ]
     }
-} 
+  },
+  "versions": {
+    "1.10.0": {
+      "imageName": "ghcr.io/runpod-workers/marker-pdf:1.10.0",
+      "minimumCudaVersion": "11.7",
+      "categories": [
+        {
+          "title": "Input settings",
+          "settings": ["file", "file_base64", "filename"]
+        },
+        {
+          "title": "Output settings",
+          "settings": ["output_format", "paginate_output", "disable_image_extraction"]
+        },
+        {
+          "title": "Processing settings",
+          "settings": ["use_llm", "page_range", "force_ocr", "strip_existing_ocr", "languages", "model"]
+        }
+      ]
+    }
+  }
+}
