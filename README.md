@@ -51,3 +51,5 @@ The following inputs can be used for testing the model:
     }
 }
 ``` 
+
+[![Runpod](https://api.runpod.io/badge/hudahoeda/runpod-marker-pdf)](https://console.runpod.io/hub/hudahoeda/runpod-marker-pdf)

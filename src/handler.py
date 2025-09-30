@@ -181,23 +181,23 @@ def sanitize_response(data, max_image_count=5):
         return str(data)
 
 
-def handler(job):
+def handler(event):
     """
-    Handler function that will be used to process jobs.
+    Process a single RunPod event payload.
     """
     try:
-        job_input = job['input']
+        input_data = event['input']
         start_time = time.time()
 
         with rp_debugger.LineTimer('validation_step'):
-            input_validation = validate(job_input, INPUT_VALIDATIONS)
+            input_validation = validate(input_data, INPUT_VALIDATIONS)
 
             if 'errors' in input_validation:
                 return {"error": input_validation['errors']}
-            job_input = input_validation['validated_input']
+            input_data = input_validation['validated_input']
 
-        file_url = next((job_input[key] for key in ['file', 'pdf'] if job_input.get(key)), None)
-        file_base64 = next((job_input[key] for key in ['file_base64', 'pdf_base64'] if job_input.get(key)), None)
+        file_url = next((input_data[key] for key in ['file', 'pdf'] if input_data.get(key)), None)
+        file_base64 = next((input_data[key] for key in ['file_base64', 'pdf_base64'] if input_data.get(key)), None)
 
         if not file_url and not file_base64:
             return {'error': 'Must provide either file/pdf or file_base64/pdf_base64'}
@@ -205,26 +205,26 @@ def handler(job):
         if file_url and file_base64:
             return {'error': 'Must provide either file/pdf or file_base64/pdf_base64, not both'}
 
-        filename_hint = job_input.get('filename')
+        filename_hint = input_data.get('filename')
 
         if file_url:
             with rp_debugger.LineTimer('download_step'):
-                file_input = download_files_from_urls(job['id'], [file_url])[0]
+                file_input = download_files_from_urls(event['id'], [file_url])[0]
         else:
             file_input = base64_to_tempfile(file_base64, filename_hint=filename_hint)
 
         with rp_debugger.LineTimer('prediction_step'):
             results = MODEL.predict(
                 file_path=file_input,
-                output_format=job_input["output_format"],
-                paginate_output=job_input["paginate_output"],
-                use_llm=job_input["use_llm"],
-                disable_image_extraction=job_input["disable_image_extraction"],
-                page_range=job_input["page_range"],
-                force_ocr=job_input["force_ocr"],
-                strip_existing_ocr=job_input["strip_existing_ocr"],
-                languages=job_input["languages"],
-                model=job_input["model"]
+                output_format=input_data["output_format"],
+                paginate_output=input_data["paginate_output"],
+                use_llm=input_data["use_llm"],
+                disable_image_extraction=input_data["disable_image_extraction"],
+                page_range=input_data["page_range"],
+                force_ocr=input_data["force_ocr"],
+                strip_existing_ocr=input_data["strip_existing_ocr"],
+                languages=input_data["languages"],
+                model=input_data["model"]
             )
 
         with rp_debugger.LineTimer('cleanup_step'):
