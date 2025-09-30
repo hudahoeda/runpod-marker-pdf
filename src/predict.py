@@ -1,27 +1,23 @@
 """
-This file contains the Predictor class, which is used to convert PDFs to Markdown
-using the marker-pdf library.
+Prediction utilities for converting documents to structured outputs using marker.
 """
 
 import base64
 import json
-import os
 import sys
 from pathlib import Path
-import tempfile
 from io import BytesIO
 from PIL import Image
 
 from marker.converters.pdf import PdfConverter
 from marker.converters.table import TableConverter
 from marker.models import create_model_dict
-from marker.output import text_from_rendered
 from runpod.serverless.utils import rp_cuda
 from marker.services.gemini import GoogleGeminiService
 
 
 class Predictor:
-    """ A Predictor class for the Marker PDF converter """
+    """Wrapper around marker converters for serverless predictions."""
 
     def __init__(self):
         self.model_artifacts = {}
@@ -104,7 +100,7 @@ class Predictor:
         
     def predict(
         self,
-        pdf_path,
+        file_path,
         output_format="markdown",
         paginate_output=False,
         use_llm=False,
@@ -159,8 +155,8 @@ class Predictor:
             config=converter_config # Pass the config dictionary here
         )
         
-        # Convert the PDF - __call__ method should only take the path
-        rendered = converter(str(pdf_path))
+        # Convert the document - __call__ method should only take the path
+        rendered = converter(str(file_path))
         
         # Process results based on output format
         results = {}
@@ -297,4 +293,4 @@ class Predictor:
         results["device"] = device
         results["model"] = model # 'model' is the original input parameter
             
-        return results 
+        return results

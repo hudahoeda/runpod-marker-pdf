@@ -4,15 +4,16 @@ Handler for Marker PDF worker.
 This module handles the requests for the marker-pdf RunPod worker.
 """
 import base64
-import os
-import tempfile
-import time
 import json
 import sys
+import tempfile
+import time
+from pathlib import Path
 
+import filetype
+import runpod
 from runpod.serverless.utils import download_files_from_urls, rp_cleanup, rp_debugger
 from runpod.serverless.utils.rp_validator import validate
-import runpod
 
 # Import predict module from current directory
 from predict import Predictor
@@ -24,7 +25,22 @@ INPUT_VALIDATIONS = {
         'required': False,
         'default': None
     },
+    'file': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
     'pdf_base64': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'file_base64': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'filename': {
         'type': str,
         'required': False,
         'default': None
@@ -83,7 +99,17 @@ MODEL = Predictor()
 MODEL.setup()
 
 
-def base64_to_tempfile(base64_file: str) -> str:
+def _extract_base64_payload(data: str) -> str:
+    """Remove data URL prefixes from base64 strings if present."""
+    if data.startswith("data:"):
+        try:
+            return data.split(",", 1)[1]
+        except IndexError:
+            return data
+    return data
+
+
+def base64_to_tempfile(base64_file: str, filename_hint: str | None = None) -> str:
     '''
     Convert base64 file to tempfile.
 
@@ -93,8 +119,28 @@ def base64_to_tempfile(base64_file: str) -> str:
     Returns:
     str: Path to tempfile
     '''
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
-        temp_file.write(base64.b64decode(base64_file))
+    payload = _extract_base64_payload(base64_file)
+
+    try:
+        file_bytes = base64.b64decode(payload, validate=False)
+    except (base64.binascii.Error, ValueError) as decode_error:
+        raise ValueError("Invalid base64 file payload") from decode_error
+
+    suffix = None
+
+    if filename_hint:
+        suffix = Path(filename_hint).suffix
+
+    if not suffix:
+        guessed = filetype.guess(file_bytes)
+        if guessed:
+            suffix = f".{guessed.extension}"
+
+    if not suffix:
+        suffix = ".pdf"
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
+        temp_file.write(file_bytes)
 
     return temp_file.name
 
@@ -150,22 +196,26 @@ def handler(job):
                 return {"error": input_validation['errors']}
             job_input = input_validation['validated_input']
 
-        if not job_input.get('pdf', False) and not job_input.get('pdf_base64', False):
-            return {'error': 'Must provide either pdf or pdf_base64'}
+        file_url = next((job_input[key] for key in ['file', 'pdf'] if job_input.get(key)), None)
+        file_base64 = next((job_input[key] for key in ['file_base64', 'pdf_base64'] if job_input.get(key)), None)
 
-        if job_input.get('pdf', False) and job_input.get('pdf_base64', False):
-            return {'error': 'Must provide either pdf or pdf_base64, not both'}
+        if not file_url and not file_base64:
+            return {'error': 'Must provide either file/pdf or file_base64/pdf_base64'}
 
-        if job_input.get('pdf', False):
+        if file_url and file_base64:
+            return {'error': 'Must provide either file/pdf or file_base64/pdf_base64, not both'}
+
+        filename_hint = job_input.get('filename')
+
+        if file_url:
             with rp_debugger.LineTimer('download_step'):
-                pdf_input = download_files_from_urls(job['id'], [job_input['pdf']])[0]
-
-        if job_input.get('pdf_base64', False):
-            pdf_input = base64_to_tempfile(job_input['pdf_base64'])
+                file_input = download_files_from_urls(job['id'], [file_url])[0]
+        else:
+            file_input = base64_to_tempfile(file_base64, filename_hint=filename_hint)
 
         with rp_debugger.LineTimer('prediction_step'):
             results = MODEL.predict(
-                pdf_path=pdf_input,
+                file_path=file_input,
                 output_format=job_input["output_format"],
                 paginate_output=job_input["paginate_output"],
                 use_llm=job_input["use_llm"],
@@ -208,4 +258,4 @@ def handler(job):
         return {"error": error_message, "details": stack_trace}
 
 
-runpod.serverless.start({"handler": handler}) 
+runpod.serverless.start({"handler": handler})
