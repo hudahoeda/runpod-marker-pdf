@@ -1,24 +1,166 @@
 {
-  "title": "Marker PDF Worker",
-  "description": "Converts PDF files to Markdown, JSON, or HTML using the Marker library.",
+  "title": "Marker Document Converter",
+  "description": "Convert PDFs, Office docs, images, and HTML into Markdown, JSON, or HTML using Marker on RunPod serverless.",
   "type": "serverless",
-  "readme": "README.md",
-  "iconFile": "icon.png",
-  "category": "AI Model",
+  "category": "language",
   "config": {
-    "templateId": "marker-pdf-template",
-    "imageName": "ghcr.io/runpod-workers/marker-pdf:latest",
     "runsOn": "GPU",
     "containerDiskInGb": 25,
-    "gpuIds": "NVIDIA GeForce RTX 3090",
     "gpuCount": 1,
-    "ports": "8080/http",
-    "healthCheck": "/health",
-    "maxConcurrency": 10,
-    "allowedCudaVersions": ["11.8", "11.7"],
-    "volumeMountPath": "/data",
+    "gpuIds": "NVIDIA RTX A4000,NVIDIA GeForce RTX 4090",
+    "allowedCudaVersions": [
+      "12.7", "12.6", "12.5", "12.4",
+      "12.3", "12.2", "12.1", "12.0",
+      "11.8", "11.7"
+    ],
     "env": [
-        {"key": "HUGGING_FACE_HUB_TOKEN", "value": "YOUR_HF_TOKEN_IF_NEEDED"}
+      {
+        "key": "file",
+        "input": {
+          "name": "Source file URL",
+          "type": "string",
+          "description": "Direct link to the document to convert (PDF, DOCX, PPTX, image, HTML, EPUB, etc.)."
+        }
+      },
+      {
+        "key": "file_base64",
+        "input": {
+          "name": "Base64 document",
+          "type": "string",
+          "description": "Base64 encoded document payload. Provide either a URL or base64, not both.",
+          "advanced": true
+        }
+      },
+      {
+        "key": "filename",
+        "input": {
+          "name": "Filename hint",
+          "type": "string",
+          "description": "Optional filename (e.g. report.docx) to help detect file type when using base64 inputs.",
+          "advanced": true
+        }
+      },
+      {
+        "key": "output_format",
+        "input": {
+          "name": "Output format",
+          "type": "string",
+          "description": "Choose the format of the conversion result.",
+          "options": [
+            {"label": "Markdown", "value": "markdown"},
+            {"label": "JSON", "value": "json"},
+            {"label": "HTML", "value": "html"}
+          ],
+          "default": "markdown"
+        }
+      },
+      {
+        "key": "paginate_output",
+        "input": {
+          "name": "Paginate output",
+          "type": "boolean",
+          "description": "Insert page break markers in the output.",
+          "default": false,
+          "trueValue": "true",
+          "falseValue": "false"
+        }
+      },
+      {
+        "key": "use_llm",
+        "input": {
+          "name": "Use LLM refinements",
+          "type": "boolean",
+          "description": "Leverage an LLM for higher fidelity formatting (requires a configured LLM backend).",
+          "default": false,
+          "trueValue": "true",
+          "falseValue": "false"
+        }
+      },
+      {
+        "key": "disable_image_extraction",
+        "input": {
+          "name": "Disable image extraction",
+          "type": "boolean",
+          "description": "Skip image extraction to reduce payload size.",
+          "default": false,
+          "trueValue": "true",
+          "falseValue": "false"
+        }
+      },
+      {
+        "key": "page_range",
+        "input": {
+          "name": "Page range",
+          "type": "string",
+          "description": "Optional page list/ranges to convert (e.g. 0,5-10,20).",
+          "advanced": true
+        }
+      },
+      {
+        "key": "force_ocr",
+        "input": {
+          "name": "Force OCR",
+          "type": "boolean",
+          "description": "Force OCR for every page, even if text is embedded.",
+          "default": false,
+          "trueValue": "true",
+          "falseValue": "false",
+          "advanced": true
+        }
+      },
+      {
+        "key": "strip_existing_ocr",
+        "input": {
+          "name": "Strip existing OCR",
+          "type": "boolean",
+          "description": "Remove embedded OCR text before processing.",
+          "default": false,
+          "trueValue": "true",
+          "falseValue": "false",
+          "advanced": true
+        }
+      },
+      {
+        "key": "languages",
+        "input": {
+          "name": "OCR languages",
+          "type": "string",
+          "description": "Comma-separated list of OCR languages (e.g. en,fr,de).",
+          "advanced": true
+        }
+      },
+      {
+        "key": "model",
+        "input": {
+          "name": "Converter model",
+          "type": "string",
+          "description": "Select the converter pipeline to run.",
+          "options": [
+            {"label": "Default", "value": "default"},
+            {"label": "Table extractor", "value": "table"}
+          ],
+          "default": "default",
+          "advanced": true
+        }
+      }
+    ],
+    "presets": [
+      {
+        "name": "Markdown output",
+        "defaults": {
+          "output_format": "markdown",
+          "paginate_output": "false",
+          "disable_image_extraction": "false"
+        }
+      },
+      {
+        "name": "JSON for tables",
+        "defaults": {
+          "output_format": "json",
+          "model": "table",
+          "disable_image_extraction": "true"
+        }
+      }
     ]
   }
-} 
+}

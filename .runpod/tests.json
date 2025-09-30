@@ -1,0 +1,22 @@
+{
+  "tests": [
+    {
+      "name": "convert_base64_html_to_markdown",
+      "input": {
+        "file_base64": "PGh0bWw+PGJvZHk+PGgxPkhlbGxvIE1hcmtlcjwvaDE+PHA+VGhpcyBpcyBhIHNhbXBsZSBIVE1MIHBhZ2UuPC9wPjwvYm9keT48L2h0bWw+",
+        "filename": "sample.html",
+        "output_format": "markdown"
+      },
+      "timeout": 180000
+    }
+  ],
+  "config": {
+    "gpuTypeId": "NVIDIA GeForce RTX 4090",
+    "gpuCount": 1,
+    "allowedCudaVersions": [
+      "12.7", "12.6", "12.5", "12.4",
+      "12.3", "12.2", "12.1", "12.0",
+      "11.8", "11.7"
+    ]
+  }
+}
